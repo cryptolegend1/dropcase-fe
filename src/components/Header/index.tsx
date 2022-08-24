@@ -70,9 +70,7 @@ const Header = (): JSX.Element => {
   const [nftBalance, setNftBalance] = useState(0);
   const [nftTokenIds, setNftTokenIds] = useState<number[]>([]);
 
-  const web3 = createAlchemyWeb3(
-    "https://polygon-mumbai.g.alchemy.com/v2/IZRagNcy1J6yjO_6QHE_3FeBWHtDBLAB"
-  );
+  const web3 = createAlchemyWeb3(process.env.NEXT_PUBLIC_RPC_URL || "");
 
   const router = useRouter();
 
@@ -112,6 +110,7 @@ const Header = (): JSX.Element => {
         process.env.NEXT_PUBLIC_CHAIN_ID &&
         network.chainId !== +process.env.NEXT_PUBLIC_CHAIN_ID
       ) {
+        console.log("incorrect network");
         switchNetwork();
       }
       setProvider(provider);
@@ -208,7 +207,6 @@ const Header = (): JSX.Element => {
     (async () => {
       try {
         if (
-          process.env.NEXT_PUBLIC_ERC721NFT_CONTRACT &&
           process.env.NEXT_PUBLIC_CHAIN_ID &&
           account &&
           library &&
@@ -220,25 +218,31 @@ const Header = (): JSX.Element => {
           });
           const _nfts = await Promise.all(
             nfts.ownedNfts.map(async (nft: any) => {
-              let nftName;
-              if (!nft.title) {
-                nftContract.current = new ethers.Contract(
-                  nft.contract.address,
-                  nftABI,
-                  library
-                );
-                nftName = await nftContract.current.name();
-                nftName += ` #${Number(nft.id.tokenId)}`;
-              } else {
-                nftName = `${nft.title} #${Number(nft.id.tokenId)}`;
-              }
+              try {
+                let nftName;
+                if (!nft.title && nft.id.tokenMetadata.tokenType === "ERC721") {
+                  nftContract.current = new ethers.Contract(
+                    nft.contract.address,
+                    nftABI,
+                    library
+                  );
+                  nftName = await nftContract.current.name();
+                  nftName += ` #${Number(nft.id.tokenId)}`;
+                } else {
+                  nftName = `${nft.title} #${Number(nft.id.tokenId)}`;
+                }
 
-              const res = {
-                tokenId: Number(nft.id.tokenId),
-                name: nftName,
-                image: nft.media[0].gateway || "placeholder.png",
-              };
-              return res;
+                const res = {
+                  tokenId: Number(nft.id.tokenId),
+                  name: nftName,
+                  image: nft.media[0].gateway || "placeholder.png",
+                  balance: +nft.balance,
+                  address: nft.contract.address,
+                };
+                return res;
+              } catch (err) {
+                console.log(err);
+              }
             })
           );
           setNftData(_nfts);
@@ -295,7 +299,7 @@ const Header = (): JSX.Element => {
     setDepositStep(depositStep + 1);
   };
 
-  const handleDepositNFT = async (tokenId: number) => {
+  const handleDepositNFT = async (selectedNFT: any) => {
     if (process.env.NEXT_PUBLIC_CP_CONTRACT && library) {
       setIsTxnProcessing(true);
       toast("Depositing NFT...", { autoClose: false });
@@ -304,9 +308,9 @@ const Header = (): JSX.Element => {
           process.env.NEXT_PUBLIC_DROPCASE_CONTRACT,
           currentDropcaseId,
           "generic.B",
-          process.env.NEXT_PUBLIC_ERC721NFT_CONTRACT,
-          +tokenId,
-          1
+          selectedNFT.address,
+          +selectedNFT.tokenId,
+          selectedNFT.amount
         );
         const depositNFTRes = await txn.wait();
 
@@ -355,7 +359,7 @@ const Header = (): JSX.Element => {
     }
   };
 
-  const handleSendNFT = async (tokenId: number) => {
+  const handleSendNFT = async (selectedNFT: any) => {
     if (process.env.NEXT_PUBLIC_CP_CONTRACT && library) {
       setIsTxnProcessing(true);
       toast("Withdrawing NFT...", { autoClose: false });
@@ -365,9 +369,9 @@ const Header = (): JSX.Element => {
           process.env.NEXT_PUBLIC_DROPCASE_CONTRACT,
           currentDropcaseId,
           "generic.B",
-          process.env.NEXT_PUBLIC_ERC721NFT_CONTRACT,
-          +tokenId,
-          1
+          selectedNFT.address,
+          +selectedNFT.tokenId,
+          selectedNFT.amount
         );
         const withdrawNFTRes = await txn.wait();
 
@@ -378,7 +382,7 @@ const Header = (): JSX.Element => {
             const txn2 = await nftContract.current.transferFrom(
               account,
               receiverAddress,
-              tokenId
+              selectedNFT.tokenId
             );
             await txn2.wait();
             toast.dismiss();
@@ -388,9 +392,9 @@ const Header = (): JSX.Element => {
               process.env.NEXT_PUBLIC_DROPCASE_CONTRACT,
               +receiverAddress,
               "generic.B",
-              process.env.NEXT_PUBLIC_ERC721NFT_CONTRACT,
-              +tokenId,
-              1
+              selectedNFT.address,
+              +selectedNFT.tokenId,
+              selectedNFT.amount
             );
             await txn2.wait();
             toast.dismiss();
@@ -486,6 +490,7 @@ const Header = (): JSX.Element => {
               {depositStep === 1 && (
                 <SingleNFT
                   selectedNFT={selectedNFT}
+                  setSelectedNFT={setSelectedNFT}
                   handleNext={() => setDepositStep(depositStep + 1)}
                 />
               )}
@@ -515,7 +520,7 @@ const Header = (): JSX.Element => {
                   <SingleNFT
                     selectedNFT={selectedNFT}
                     imgSize="small"
-                    handleNext={() => handleDepositNFT(selectedNFT.tokenId)}
+                    handleNext={() => handleDepositNFT(selectedNFT)}
                     step="Deposit"
                   />
                 </Box>
@@ -612,7 +617,7 @@ const Header = (): JSX.Element => {
                   <SingleNFT
                     selectedNFT={selectedNFT}
                     imgSize="small"
-                    handleNext={() => handleSendNFT(selectedNFT.tokenId)}
+                    handleNext={() => handleSendNFT(selectedNFT)}
                     step="Send"
                   />
                 </Box>

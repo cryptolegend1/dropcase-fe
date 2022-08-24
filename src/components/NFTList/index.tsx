@@ -22,7 +22,7 @@ const NFTList = ({
               p: "20px 0",
               cursor: "pointer",
             }}
-            onClick={() => onSelectNFT(nft)}
+            onClick={() => onSelectNFT({ ...nft, amount: 1 })}
           >
             <Box component="img" src={nft.image} sx={{ width: "50px" }} />
             <Typography>{nft.name}</Typography>

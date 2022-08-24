@@ -48,31 +48,35 @@ const Home: NextPage = () => {
     onError: () => {
       console.log("error");
     },
-    onCompleted: (data) => {
+    onCompleted: async (data) => {
       if (data.genericSmartBaskets.length && library) {
-        data.genericSmartBaskets[0].tokenBalances.map(
-          async (nftContract: any) => {
-            const nfts: any = [];
-            await Promise.all(
-              nftContract.nftsById.map(async (nft: any) => {
-                const contract = new ethers.Contract(
-                  nftContract.nftTokenAddress,
-                  nftABI,
-                  library
-                );
-                const nftName = await contract.name();
-                if (nftContracts.includes(nftContract.nftTokenAddress))
+        const nfts: any = [];
+        await Promise.all(
+          data.genericSmartBaskets[0].tokenBalances.map(
+            async (nftContract: any) => {
+              await Promise.all(
+                nftContract.nftsById.map(async (nft: any) => {
+                  const contract = new ethers.Contract(
+                    nftContract.nftTokenAddress,
+                    nftABI,
+                    library
+                  );
+                  const nftName = await contract.name();
+                  // if (nftContracts.includes(nftContract.nftTokenAddress))
                   nfts.push({
                     contract: nftContract.nftTokenAddress,
                     tokenId: +nft.tokenId,
-                    balance: +nft.tokeBalance,
+                    balance: +nft.tokenBalance,
                     name: nftName,
                   });
-              })
-            );
-            setNfts(nfts);
-          }
+                })
+              );
+            }
+          )
         );
+        setNfts(nfts);
+      } else {
+        setNfts([]);
       }
     },
   });
@@ -186,7 +190,7 @@ const Home: NextPage = () => {
                     >
                       {nfts.map((nft: any, key: number) => (
                         <MenuItem key={key} value={key}>
-                          {nft.name} {nft.tokenId}
+                          {nft.name} #{nft.tokenId} (balance: {nft.balance})
                         </MenuItem>
                       ))}
                     </Select>

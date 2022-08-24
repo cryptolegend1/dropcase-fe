@@ -1,4 +1,12 @@
-import { Box, Button, Skeleton, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  FormControl,
+  Skeleton,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { useState } from "react";
 import {
   DropcaseContextType,
   useDropcaseContext,
@@ -6,16 +14,19 @@ import {
 
 const SingleNFT = ({
   selectedNFT,
+  setSelectedNFT,
   imgSize = "large",
   handleNext,
   step = "Next",
 }: {
   selectedNFT: any;
+  setSelectedNFT?: any;
   imgSize?: string;
   handleNext: any;
   step?: string;
 }) => {
   const { isTxnProcessing } = useDropcaseContext() as DropcaseContextType;
+  const [amount, setAmount] = useState(1);
   return (
     <Box
       sx={{
@@ -33,7 +44,25 @@ const SingleNFT = ({
       />
 
       <Typography variant="h5">{selectedNFT.name}</Typography>
-      <Typography>#{selectedNFT.tokenId}</Typography>
+      {selectedNFT.balance > 1 && setSelectedNFT && (
+        <FormControl sx={{ mb: "30px" }}>
+          <TextField
+            id="amount"
+            label="Amount"
+            variant="outlined"
+            value={amount}
+            type="number"
+            inputProps={{ min: 1, max: selectedNFT.balance }}
+            onChange={(e: any) => {
+              setAmount(e.target.value);
+              setSelectedNFT({ ...selectedNFT, amount: +e.target.value });
+            }}
+          />
+        </FormControl>
+      )}
+      {selectedNFT.amount > 1 && (
+        <Typography>Amount: {selectedNFT.amount}</Typography>
+      )}
       <Button variant="contained" onClick={handleNext}>
         {isTxnProcessing ? "Processing transaction..." : step}
       </Button>

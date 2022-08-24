@@ -2,8 +2,8 @@ interface INetworkParams {
   [chainId: string]: object;
 }
 const networkParams: INetworkParams = {
-  "0x80001": {
-    chainId: "0x80001",
+  "0x13881": {
+    chainId: "0x13881",
     rpcUrls: ["https://matic-mumbai.chainstacklabs.com"],
     chainName: "Mumbai Testnet",
     nativeCurrency: { name: "MATIC", decimals: 18, symbol: "MATIC" },
