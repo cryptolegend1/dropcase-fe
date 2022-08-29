@@ -4,8 +4,10 @@ export type DropcaseContextType = {
   setCurrentDropcaseId: React.Dispatch<React.SetStateAction<number>>;
   dropcaseTokenIds: number[];
   setDropcaseTokenIds: React.Dispatch<React.SetStateAction<number[]>>;
-  currentNFTId: number;
-  setCurrentNFTId: React.Dispatch<React.SetStateAction<number>>;
+  currentNFT: any;
+  setCurrentNFT: React.Dispatch<React.SetStateAction<any>>;
+  alchemyWeb3: any;
+  setAlchemyWeb3: React.Dispatch<React.SetStateAction<any>>;
   isTxnProcessing: boolean;
   setIsTxnProcessing: React.Dispatch<React.SetStateAction<boolean>>;
 };
@@ -13,9 +15,10 @@ const DropcaseContext = createContext<DropcaseContextType | null>(null);
 
 export function DropcaseContextProvider({ children }: { children: any }) {
   const [currentDropcaseId, setCurrentDropcaseId] = useState(0);
-  const [currentNFTId, setCurrentNFTId] = useState(0);
+  const [currentNFT, setCurrentNFT] = useState(null);
   const [dropcaseTokenIds, setDropcaseTokenIds] = useState<number[]>([]);
   const [isTxnProcessing, setIsTxnProcessing] = useState(false);
+  const [alchemyWeb3, setAlchemyWeb3] = useState(null);
   return (
     <DropcaseContext.Provider
       value={{
@@ -23,8 +26,10 @@ export function DropcaseContextProvider({ children }: { children: any }) {
         setCurrentDropcaseId,
         dropcaseTokenIds,
         setDropcaseTokenIds,
-        currentNFTId,
-        setCurrentNFTId,
+        currentNFT,
+        setCurrentNFT,
+        alchemyWeb3,
+        setAlchemyWeb3,
         isTxnProcessing,
         setIsTxnProcessing,
       }}

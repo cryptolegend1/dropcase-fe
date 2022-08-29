@@ -25,7 +25,7 @@ const SelectReceivier = ({
   selectedNFT,
 }: {
   onSelectReceiver: (value: string, sendingDropcase: boolean) => void;
-  selectedNFT: number;
+  selectedNFT: any;
 }) => {
   const { currentDropcaseId, setCurrentDropcaseId, dropcaseTokenIds } =
     useDropcaseContext() as DropcaseContextType;

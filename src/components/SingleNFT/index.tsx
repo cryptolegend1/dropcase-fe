@@ -1,11 +1,4 @@
-import {
-  Box,
-  Button,
-  FormControl,
-  Skeleton,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Box, Button, FormControl, TextField, Typography } from "@mui/material";
 import { useState } from "react";
 import {
   DropcaseContextType,
@@ -43,7 +36,9 @@ const SingleNFT = ({
         sx={{ width: imgSize === "large" ? "300px" : "150px" }}
       />
 
-      <Typography variant="h5">{selectedNFT.name}</Typography>
+      <Typography variant="h5">
+        {selectedNFT.name} #{selectedNFT.tokenId}
+      </Typography>
       {selectedNFT.balance > 1 && setSelectedNFT && (
         <FormControl sx={{ mb: "30px" }}>
           <TextField

@@ -25,7 +25,9 @@ const NFTList = ({
             onClick={() => onSelectNFT({ ...nft, amount: 1 })}
           >
             <Box component="img" src={nft.image} sx={{ width: "50px" }} />
-            <Typography>{nft.name}</Typography>
+            <Typography>
+              {nft.name} #{nft.tokenId}
+            </Typography>
           </Box>
         ))}
       </Stack>

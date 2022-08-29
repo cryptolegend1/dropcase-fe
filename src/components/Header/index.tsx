@@ -10,8 +10,8 @@ import {
   DropcaseContextType,
 } from "../../context/dropcase";
 import { providerOptions } from "utils/providerOptions";
-import erc721NFTABI from "abi/erc721NFT.json";
-import nftABI from "abi/nft.json";
+import erc721ABI from "abi/erc721.json";
+import erc1155ABI from "abi/erc1155.json";
 import cpABI from "@charged-particles/protocol-subgraph/abis/ChargedParticles.json";
 import dropcaseABI from "abi/dropcase.json";
 import NFTList from "components/NFTList";
@@ -55,9 +55,11 @@ const Header = (): JSX.Element => {
   } = useWalletContext() as WalletContextType;
   const {
     currentDropcaseId,
-    currentNFTId,
+    currentNFT,
     isTxnProcessing,
     setIsTxnProcessing,
+    alchemyWeb3,
+    setAlchemyWeb3,
   } = useDropcaseContext() as DropcaseContextType;
   const [error, setError] = useState("");
   const [nftData, setNftData] = useState<any>([]);
@@ -67,10 +69,6 @@ const Header = (): JSX.Element => {
   const [depositStep, setDepositStep] = useState(0);
   const [sendStep, setSendStep] = useState(0);
   const [receiverAddress, setReceiverAddress] = useState("");
-  const [nftBalance, setNftBalance] = useState(0);
-  const [nftTokenIds, setNftTokenIds] = useState<number[]>([]);
-
-  const web3 = createAlchemyWeb3(process.env.NEXT_PUBLIC_RPC_URL || "");
 
   const router = useRouter();
 
@@ -117,6 +115,8 @@ const Header = (): JSX.Element => {
       setLibrary(library);
       if (accounts) setAccount(accounts[0]);
       setChainId(network.chainId);
+      const web3 = createAlchemyWeb3(process.env.NEXT_PUBLIC_RPC_URL || "");
+      setAlchemyWeb3(web3);
     } catch (error: any) {
       setError(error);
     }
@@ -212,22 +212,24 @@ const Header = (): JSX.Element => {
           library &&
           network === +process.env.NEXT_PUBLIC_CHAIN_ID
         ) {
-          const nfts = await web3.alchemy.getNfts({
+          const nfts = await alchemyWeb3.alchemy.getNfts({
             owner: account,
-            contractAddresses: nftContracts,
+            contractAddresses: nftContracts[process.env.NEXT_PUBLIC_CHAIN_ID],
           });
           const _nfts = await Promise.all(
             nfts.ownedNfts.map(async (nft: any) => {
               try {
                 let nftName;
+
+                nftContract.current = new ethers.Contract(
+                  nft.contract.address,
+                  nft.id.tokenMetadata.tokenType === "ERC721"
+                    ? erc721ABI
+                    : erc1155ABI,
+                  library
+                );
                 if (!nft.title && nft.id.tokenMetadata.tokenType === "ERC721") {
-                  nftContract.current = new ethers.Contract(
-                    nft.contract.address,
-                    nftABI,
-                    library
-                  );
                   nftName = await nftContract.current.name();
-                  nftName += ` #${Number(nft.id.tokenId)}`;
                 } else {
                   nftName = `${nft.title} #${Number(nft.id.tokenId)}`;
                 }
@@ -246,39 +248,6 @@ const Header = (): JSX.Element => {
             })
           );
           setNftData(_nfts);
-
-          // const signer = library.getSigner();
-          // nftContract.current = new ethers.Contract(
-          //   process.env.NEXT_PUBLIC_ERC721NFT_CONTRACT,
-          //   erc721NFTABI,
-          //   signer
-          // );
-          // const balance = (
-          //   await nftContract.current.balanceOf(account)
-          // ).toNumber();
-          // setNftBalance(balance);
-          // const tokenIds: number[] = [];
-          // if (balance) {
-          //   for (let i = 0; i < balance; i++) {
-          //     tokenIds.push(
-          //       (
-          //         await nftContract.current.tokenOfOwnerByIndex(account, i)
-          //       ).toNumber()
-          //     );
-          //   }
-          //   setNftTokenIds(tokenIds);
-          //   const nfts: any[] = await Promise.all(
-          //     tokenIds
-          //       .filter((id: number) => id > 801)
-          //       .map(async (id: number) => {
-          //         const tokenURI = await nftContract.current.tokenURI(id);
-          //         let res: any = await (await fetch(tokenURI)).json();
-          //         res.tokenId = id;
-          //         return res;
-          //       })
-          //   );
-          //   setNftData(nfts);
-          // }
         }
         if (process.env.NEXT_PUBLIC_CP_CONTRACT && account && library) {
           const signer = library.getSigner();
@@ -348,10 +317,7 @@ const Header = (): JSX.Element => {
       toast("Sent Dropcase! 👌");
       router.reload();
     } else {
-      const tokenURI = await nftContract.current.tokenURI(currentNFTId);
-      let res: any = await (await fetch(tokenURI)).json();
-      res.tokenId = currentNFTId;
-      setSelectedNFT(res);
+      setSelectedNFT(currentNFT);
 
       setReceiverAddress(value);
 
@@ -378,12 +344,26 @@ const Header = (): JSX.Element => {
         if (withdrawNFTRes) {
           toast.dismiss();
           toast("Withdrew NFT and tranferring NFT...", { autoClose: false });
+          nftContract.current = new ethers.Contract(
+            selectedNFT.address,
+            selectedNFT.tokenType === "ERC721" ? erc721ABI : erc1155ABI,
+            library
+          );
           if (ethers.utils.isAddress(receiverAddress)) {
-            const txn2 = await nftContract.current.transferFrom(
-              account,
-              receiverAddress,
-              selectedNFT.tokenId
-            );
+            const txn2 =
+              selectedNFT.tokenType === "ERC721"
+                ? await nftContract.current.safeTransferFrom(
+                    account,
+                    receiverAddress,
+                    selectedNFT.tokenId
+                  )
+                : await nftContract.current.safeTransferFrom(
+                    account,
+                    receiverAddress,
+                    selectedNFT.tokenId,
+                    selectedNFT.amount,
+                    "0x0"
+                  );
             await txn2.wait();
             toast.dismiss();
             toast("Transferred NFT 👌");
@@ -572,12 +552,12 @@ const Header = (): JSX.Element => {
               {!sendStep && (
                 <SelectReceivier
                   onSelectReceiver={onSelectReceiver}
-                  selectedNFT={currentNFTId}
+                  selectedNFT={currentNFT}
                 />
               )}
               {sendStep === 1 && (
                 <SingleNFT
-                  selectedNFT={selectedNFT}
+                  selectedNFT={currentNFT}
                   handleNext={() => setSendStep(sendStep + 1)}
                 />
               )}
@@ -625,13 +605,13 @@ const Header = (): JSX.Element => {
             </Box>
           </Menu>
         </Box>
-        <Button
+        {/* <Button
           variant="outlined"
           disabled={!account}
           onClick={handleClickMint}
         >
           Mint Dropcase
-        </Button>
+        </Button> */}
         <Button variant="outlined" disabled>
           Chain
         </Button>

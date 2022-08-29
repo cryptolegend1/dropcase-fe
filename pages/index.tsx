@@ -8,6 +8,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  TextField,
   Typography,
 } from "@mui/material";
 import { ethers } from "ethers";
@@ -20,24 +21,26 @@ import {
 } from "../src/context/dropcase";
 import { DROPCASE_TOKENS } from "tokenQuery";
 import CardMedia from "@mui/material/CardMedia";
-import nftABI from "abi/nft.json";
-import nftContracts from "config/nftsContracts";
+import erc165ABI from "abi/erc165.json";
+import nftContracts, { ERC721InterfaceId } from "config/nftsContracts";
 
 const Home: NextPage = () => {
   const { account, library, network } = useWalletContext() as WalletContextType;
   const [balance, setBalance] = useState(0);
-  const { dropcaseTokenIds, setDropcaseTokenIds } =
-    useDropcaseContext() as DropcaseContextType;
+  const [amount, setAmount] = useState(1);
 
   const {
+    dropcaseTokenIds,
+    setDropcaseTokenIds,
     currentDropcaseId,
     setCurrentDropcaseId,
-    currentNFTId,
-    setCurrentNFTId,
+    currentNFT,
+    setCurrentNFT,
+    alchemyWeb3,
   } = useDropcaseContext() as DropcaseContextType;
 
-  const [nftTokenIds, setNftTokenIds] = useState<number[]>([]);
   const [nfts, setNfts] = useState<number[]>([]);
+  const [currentNFTIdx, setCurrentNFTIdx] = useState(0);
 
   useQuery(DROPCASE_TOKENS, {
     variables: {
@@ -49,26 +52,45 @@ const Home: NextPage = () => {
       console.log("error");
     },
     onCompleted: async (data) => {
-      if (data.genericSmartBaskets.length && library) {
+      if (data.genericSmartBaskets.length && library && alchemyWeb3) {
         const nfts: any = [];
         await Promise.all(
           data.genericSmartBaskets[0].tokenBalances.map(
             async (nftContract: any) => {
               await Promise.all(
                 nftContract.nftsById.map(async (nft: any) => {
-                  const contract = new ethers.Contract(
+                  let contract = new ethers.Contract(
                     nftContract.nftTokenAddress,
-                    nftABI,
+                    erc165ABI,
                     library
                   );
-                  const nftName = await contract.name();
-                  // if (nftContracts.includes(nftContract.nftTokenAddress))
-                  nfts.push({
-                    contract: nftContract.nftTokenAddress,
-                    tokenId: +nft.tokenId,
-                    balance: +nft.tokenBalance,
-                    name: nftName,
-                  });
+
+                  const is721 = await contract.supportsInterface(
+                    ERC721InterfaceId
+                  );
+                  const tokenMetadata =
+                    await alchemyWeb3.alchemy.getNftMetadata({
+                      contractAddress: nftContract.nftTokenAddress,
+                      tokenId: +nft.tokenId,
+                      tokenType: is721 ? "erc721" : "erc1155",
+                    });
+
+                  if (
+                    process.env.NEXT_PUBLIC_CHAIN_ID &&
+                    nftContracts[process.env.NEXT_PUBLIC_CHAIN_ID].includes(
+                      nftContract.nftTokenAddress
+                    )
+                  )
+                    nfts.push({
+                      address: nftContract.nftTokenAddress,
+                      tokenId: +nft.tokenId,
+                      balance: +nft.tokenBalance,
+                      name:
+                        tokenMetadata.title ||
+                        tokenMetadata.contractMetadata.name,
+                      amount: 1,
+                      tokeType: is721 ? "erc721" : "erc1155",
+                    });
                 })
               );
             }
@@ -112,11 +134,13 @@ const Home: NextPage = () => {
 
   const handleDropCaseChange = (e: any) => {
     setCurrentDropcaseId(+e.target.value);
-    setCurrentNFTId(0);
+    setCurrentNFT(null);
   };
 
   const handleNFTChange = (e: any) => {
-    setCurrentNFTId(+e.target.value);
+    setCurrentNFTIdx(+e.target.value);
+    setAmount(1);
+    setCurrentNFT(nfts[+e.target.value - 1]);
   };
   return (
     <div>
@@ -168,11 +192,10 @@ const Home: NextPage = () => {
               </FormControl>
             )}
             <Box>
-              {/* <Box component="img" src="image1.jpg" sx={{ width: "500px" }} /> */}
               <CardMedia
                 component={"img"}
                 src="dropcase.jpg"
-                sx={{ height: "500px" }}
+                sx={{ height: "500px", width: "571px" }}
               />
 
               {!!currentDropcaseId && (
@@ -184,16 +207,35 @@ const Home: NextPage = () => {
                       defaultValue={""}
                       labelId="nft-select-label"
                       id="nft-select"
-                      value={!currentNFTId ? "" : currentNFTId.toString()}
+                      value={!currentNFTIdx ? "" : currentNFTIdx.toString()}
                       label="Select NFT"
                       onChange={handleNFTChange}
                     >
                       {nfts.map((nft: any, key: number) => (
-                        <MenuItem key={key} value={key}>
+                        <MenuItem key={key} value={key + 1}>
                           {nft.name} #{nft.tokenId} (balance: {nft.balance})
                         </MenuItem>
                       ))}
                     </Select>
+                  </FormControl>
+                  <FormControl sx={{ width: 80, mt: "20px", ml: "20px" }}>
+                    {!!currentNFT && (
+                      <TextField
+                        id="amount"
+                        label="Amount"
+                        variant="outlined"
+                        value={amount}
+                        type="number"
+                        inputProps={{ min: 1, max: currentNFT.balance }}
+                        onChange={(e: any) => {
+                          setAmount(e.target.value);
+                          setCurrentNFT({
+                            ...currentNFT,
+                            amount: +e.target.value,
+                          });
+                        }}
+                      />
+                    )}
                   </FormControl>
                 </Box>
               )}
