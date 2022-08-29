@@ -55,7 +55,7 @@ const SingleNFT = ({
           />
         </FormControl>
       )}
-      {selectedNFT.amount > 1 && (
+      {selectedNFT.amount > 1 && !setSelectedNFT && (
         <Typography>Amount: {selectedNFT.amount}</Typography>
       )}
       <Button variant="contained" onClick={handleNext}>

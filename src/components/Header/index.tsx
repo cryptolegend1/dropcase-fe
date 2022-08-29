@@ -231,7 +231,7 @@ const Header = (): JSX.Element => {
                 if (!nft.title && nft.id.tokenMetadata.tokenType === "ERC721") {
                   nftName = await nftContract.current.name();
                 } else {
-                  nftName = `${nft.title} #${Number(nft.id.tokenId)}`;
+                  nftName = nft.title;
                 }
 
                 const res = {
@@ -341,7 +341,13 @@ const Header = (): JSX.Element => {
         );
         const withdrawNFTRes = await txn.wait();
 
-        if (withdrawNFTRes) {
+        if (
+          withdrawNFTRes &&
+          !(
+            ethers.utils.isAddress(receiverAddress) &&
+            receiverAddress === account
+          )
+        ) {
           toast.dismiss();
           toast("Withdrew NFT and tranferring NFT...", { autoClose: false });
           nftContract.current = new ethers.Contract(

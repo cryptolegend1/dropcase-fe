@@ -26,7 +26,7 @@ const NFTList = ({
           >
             <Box component="img" src={nft.image} sx={{ width: "50px" }} />
             <Typography>
-              {nft.name} #{nft.tokenId}
+              {nft.name} #{nft.tokenId} (balance: {nft.balance})
             </Typography>
           </Box>
         ))}
