@@ -165,9 +165,16 @@ const Home: NextPage = () => {
               <Typography variant="h4">Welcome to Dropcase</Typography>
             )}
             {!!account && (
-              <Typography variant="h5">
-                You have {balance} DropCase(s)
-              </Typography>
+              <>
+                <Typography variant="h5">
+                  You have {balance} DropCase(s)
+                </Typography>
+                <Typography>
+                  There is some delay for every transaction like deposit/send
+                  nft(s) to be synced with dropcase becauseof thegraph sync
+                  interval.
+                </Typography>
+              </>
             )}
             {!!account && !!dropcaseTokenIds.length && (
               <FormControl sx={{ minWidth: 200 }}>

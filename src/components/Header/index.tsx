@@ -389,6 +389,15 @@ const Header = (): JSX.Element => {
           setSendStep(0);
           setIsTxnProcessing(false);
           router.reload();
+        } else if (
+          withdrawNFTRes &&
+          ethers.utils.isAddress(receiverAddress) &&
+          receiverAddress === account
+        ) {
+          toast.dismiss();
+          toast("Successfully withdrew NFT");
+          setIsTxnProcessing(false);
+          router.reload();
         }
       } catch (err) {
         console.log(err);
