@@ -2,6 +2,7 @@ const nftContracts: any = {
   "80001": [
     "0x97381a51da7902d9efcd0a9b7c14d5c3fb63ce18",
     "0x519d969351e7d336740bc37978806cef513cdcc9",
+    "0x147f05cee02be989c3afcae027b1bfcde0bf4eeb",
   ],
   "137": [
     "0x2953399124F0cBB46d2CbACD8A89cF0599974963",
