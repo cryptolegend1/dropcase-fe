@@ -37,7 +37,7 @@ const SingleNFT = ({
       />
 
       <Typography variant="h5">
-        {selectedNFT.name} #{selectedNFT.tokenId}
+        {selectedNFT.name} #{selectedNFT.tokenId.toString()}
       </Typography>
       {selectedNFT.balance > 1 && setSelectedNFT && (
         <FormControl sx={{ mb: "30px" }}>

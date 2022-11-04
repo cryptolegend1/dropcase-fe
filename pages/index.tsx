@@ -11,7 +11,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import dropcaseABI from "abi/dropcase.json";
 import { useEffect, useState } from "react";
 import { useWalletContext, WalletContextType } from "../src/context/wallet";
@@ -71,7 +71,7 @@ const Home: NextPage = () => {
                   const tokenMetadata =
                     await alchemyWeb3.alchemy.getNftMetadata({
                       contractAddress: nftContract.nftTokenAddress,
-                      tokenId: +nft.tokenId,
+                      tokenId: BigNumber.from(nft.tokenId),
                       tokenType: is721 ? "erc721" : "erc1155",
                     });
 
@@ -80,17 +80,19 @@ const Home: NextPage = () => {
                     nftContracts[process.env.NEXT_PUBLIC_CHAIN_ID].includes(
                       nftContract.nftTokenAddress
                     )
-                  )
+                  ) {
                     nfts.push({
                       address: nftContract.nftTokenAddress,
-                      tokenId: +nft.tokenId,
+                      tokenId: nft.tokenId.toString(),
                       balance: +nft.tokenBalance,
                       name:
                         tokenMetadata.title ||
                         tokenMetadata.contractMetadata.name,
+                      image: tokenMetadata.metadata.image,
                       amount: 1,
                       tokeType: is721 ? "erc721" : "erc1155",
                     });
+                  }
                 })
               );
             }
@@ -171,7 +173,7 @@ const Home: NextPage = () => {
                 </Typography>
                 <Typography>
                   There is some delay for every transaction like deposit/send
-                  nft(s) to be synced with dropcase becauseof thegraph sync
+                  nft(s) to be synced with dropcase because of thegraph sync
                   interval.
                 </Typography>
               </>

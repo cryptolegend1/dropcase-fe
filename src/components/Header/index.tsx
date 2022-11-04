@@ -3,7 +3,7 @@ import Menu from "@mui/material/Menu";
 import { Box, Button, Divider, TextField, Typography } from "@mui/material";
 import { formatAddress, toHex } from "utils";
 import Web3Modal from "web3modal";
-import { ethers } from "ethers";
+import { ethers, BigNumber } from "ethers";
 import { useWalletContext, WalletContextType } from "../../context/wallet";
 import {
   useDropcaseContext,
@@ -12,6 +12,7 @@ import {
 import { providerOptions } from "utils/providerOptions";
 import erc721ABI from "abi/erc721.json";
 import erc1155ABI from "abi/erc1155.json";
+import approvalABI from "abi/forApproval.json";
 import cpABI from "@charged-particles/protocol-subgraph/abis/ChargedParticles.json";
 import dropcaseABI from "abi/dropcase.json";
 import NFTList from "components/NFTList";
@@ -216,6 +217,7 @@ const Header = (): JSX.Element => {
             owner: account,
             contractAddresses: nftContracts[process.env.NEXT_PUBLIC_CHAIN_ID],
           });
+
           const _nfts = await Promise.all(
             nfts.ownedNfts.map(async (nft: any) => {
               try {
@@ -235,7 +237,7 @@ const Header = (): JSX.Element => {
                 }
 
                 const res = {
-                  tokenId: Number(nft.id.tokenId),
+                  tokenId: BigNumber.from(nft.id.tokenId),
                   name: nftName,
                   image: nft.media[0].gateway || "placeholder.png",
                   balance: +nft.balance,
@@ -247,6 +249,7 @@ const Header = (): JSX.Element => {
               }
             })
           );
+
           setNftData(_nfts);
         }
         if (process.env.NEXT_PUBLIC_CP_CONTRACT && account && library) {
@@ -269,26 +272,50 @@ const Header = (): JSX.Element => {
   };
 
   const handleDepositNFT = async (selectedNFT: any) => {
-    if (process.env.NEXT_PUBLIC_CP_CONTRACT && library) {
+    if (process.env.NEXT_PUBLIC_CP_CONTRACT && account && library) {
       setIsTxnProcessing(true);
       toast("Depositing NFT...", { autoClose: false });
       try {
-        const txn = await cpContract.current.covalentBond(
-          process.env.NEXT_PUBLIC_DROPCASE_CONTRACT,
-          currentDropcaseId,
-          "generic.B",
+        const signer = library.getSigner();
+        const approvalContract = new ethers.Contract(
           selectedNFT.address,
-          +selectedNFT.tokenId,
-          selectedNFT.amount
+          approvalABI,
+          signer
         );
-        const depositNFTRes = await txn.wait();
+        const isApproved = await approvalContract.isApprovedForAll(
+          account,
+          process.env.NEXT_PUBLIC_CP_CONTRACT
+        );
+        console.log(isApproved);
+        let approvalRes = false;
+        if (!isApproved) {
+          const txn = await approvalContract.setApprovalForAll(
+            process.env.NEXT_PUBLIC_CP_CONTRACT,
+            true
+          );
+          approvalRes = await txn.wait();
+        } else {
+          approvalRes = true;
+        }
+        console.log(approvalRes);
+        if (!!approvalRes) {
+          const txn = await cpContract.current.covalentBond(
+            process.env.NEXT_PUBLIC_DROPCASE_CONTRACT,
+            currentDropcaseId,
+            "generic.B",
+            selectedNFT.address,
+            selectedNFT.tokenId.toString(),
+            selectedNFT.amount
+          );
+          const depositNFTRes = await txn.wait();
 
-        if (depositNFTRes) {
-          toast("Deposited NFT! 👌");
+          if (depositNFTRes) {
+            toast("Deposited NFT! 👌");
 
-          setDepositStep(0);
-          setIsTxnProcessing(false);
-          router.reload();
+            setDepositStep(0);
+            setIsTxnProcessing(false);
+            router.reload();
+          }
         }
       } catch (err: any) {
         console.log(err);
@@ -336,7 +363,7 @@ const Header = (): JSX.Element => {
           currentDropcaseId,
           "generic.B",
           selectedNFT.address,
-          +selectedNFT.tokenId,
+          BigNumber.from(selectedNFT.tokenId),
           selectedNFT.amount
         );
         const withdrawNFTRes = await txn.wait();
@@ -361,12 +388,12 @@ const Header = (): JSX.Element => {
                 ? await nftContract.current.safeTransferFrom(
                     account,
                     receiverAddress,
-                    selectedNFT.tokenId
+                    BigNumber.from(selectedNFT.tokenId)
                   )
                 : await nftContract.current.safeTransferFrom(
                     account,
                     receiverAddress,
-                    selectedNFT.tokenId,
+                    BigNumber.from(selectedNFT.tokenId),
                     selectedNFT.amount,
                     "0x0"
                   );
@@ -379,7 +406,7 @@ const Header = (): JSX.Element => {
               +receiverAddress,
               "generic.B",
               selectedNFT.address,
-              +selectedNFT.tokenId,
+              BigNumber.from(selectedNFT.tokenId),
               selectedNFT.amount
             );
             await txn2.wait();
